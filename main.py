@@ -186,8 +186,10 @@ class Tile:
     def reveal_highlighted(self):
         """Reveal all highlighted tiles, and use flood-fill for 0 adjacent mines."""
         if self._game.over or self._revealed:
-            return
-        if self._adjacent_mines == 0:
+            return  # Prevent further action if the game is over or tile is already revealed
+        if self._mine:
+            self.reveal()  # Reveal the mine and end the game
+        elif self._adjacent_mines == 0:
             self.flood_fill()
         else:
             self.reveal()
@@ -198,11 +200,28 @@ class Tile:
         while stack:
             current_tile = stack.pop()
             if current_tile._revealed or current_tile._flagged or current_tile._mine:
-                continue
+                continue  # Skip mines, revealed tiles, and flagged tiles
             current_tile.reveal()
             if current_tile._adjacent_mines == 0:
                 neighbors = self._game.get_neighbors(current_tile)
                 stack.extend(neighbors)
+
+    def reveal(self):
+        """Handle revealing the tile."""
+        if self._flagged or self._game.over or self._revealed:
+            return False
+
+        images = self._game.get_images()
+
+        if self._mine:
+            self._button.config(image=images["mine"])
+            self._game.end_game()  # Trigger game over
+        else:
+            image_str = str(self._adjacent_mines) if self._adjacent_mines > 0 else "base"
+            self._button.config(image=images[image_str])
+
+        self._revealed = True
+        return True
 
     def highlight(self):
         """Highlight the neighbors in a 3x3x3 cube."""
@@ -226,23 +245,6 @@ class Tile:
                 tile._button.config(bg="Gray")
         if self.marker_color is None:  # Reset hovered tile only if it's not marked
             self._button.config(bg="Gray")
-
-    def reveal(self):
-        """Handle revealing the tile."""
-        if self._flagged or self._game.over or self._revealed:
-            return False
-
-        images = self._game.get_images()
-
-        if self._mine:
-            self._button.config(image=images["mine"])
-            self._game.end_game()  # Trigger game over
-        else:
-            image_str = str(self._adjacent_mines) if self._adjacent_mines > 0 else "base"
-            self._button.config(image=images[image_str])
-
-        self._revealed = True
-        return True
 
     def toggle_flag(self):
         if self._revealed or self._game.over:
