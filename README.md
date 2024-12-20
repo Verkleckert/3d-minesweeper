@@ -11,7 +11,7 @@ The game is played on a 3D grid. The player can click on a cell to reveal it. If
 #### Mouse
 - Left click: Reveal cell
 - Right click: Flag cell
-- Middle click: Reveal all adjacent cells
+- Middle click: Flood reveal cells
 
 #### Keyboard
 - `R`: Restart game (WIP!)
@@ -30,3 +30,8 @@ The game is played on a 3D grid. The player can click on a cell to reveal it. If
 - Run `pip install -r requirements.txt`
 - Run `python main.py`
 - Enjoy!
+
+
+## Screenshots
+
+![Preview 1](assets/github/preview1.png)

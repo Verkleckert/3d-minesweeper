@@ -32,7 +32,7 @@ class Game:
         self.load_images()
         self.create_grids()
         self.draw_tiles()
-        self.initialize_tile_states(50)
+        self.initialize_tile_states(35)
 
         self._root.update_idletasks()
         self._root.geometry(f"{self._root.winfo_reqwidth()}x{self._root.winfo_reqheight()}")
@@ -133,9 +133,10 @@ class Game:
                     tile._revealed = False
                     tile._flagged = False
                     tile._mine = False
+                    tile.marker_color = None  # Clear the marker color
                     # Reset the button image and background color
                     tile._button.config(image=self._images["field"], text="", bg="Gray")
-        self.initialize_tile_states(20)
+        self.initialize_tile_states(35)  # Reinitialize the game state
 
     def end_game(self):
         """Handle the game over state."""
@@ -183,14 +184,25 @@ class Tile:
         self._button.bind("<Leave>", lambda event: self.reset_highlights())
 
     def reveal_highlighted(self):
-        """Reveal all highlighted tiles."""
-        if self._game.over:
+        """Reveal all highlighted tiles, and use flood-fill for 0 adjacent mines."""
+        if self._game.over or self._revealed:
             return
-        neighbors = self._game.get_neighbors(self, range_size=1)
-        for tile in neighbors:
-            if not tile._revealed:
-                tile.reveal()  # Reveal each highlighted tile
-        self.reveal()  # Reveal the clicked tile itself
+        if self._adjacent_mines == 0:
+            self.flood_fill()
+        else:
+            self.reveal()
+
+    def flood_fill(self):
+        """Flood-fill algorithm to reveal all connected tiles with 0 adjacent mines."""
+        stack = [self]
+        while stack:
+            current_tile = stack.pop()
+            if current_tile._revealed or current_tile._flagged or current_tile._mine:
+                continue
+            current_tile.reveal()
+            if current_tile._adjacent_mines == 0:
+                neighbors = self._game.get_neighbors(current_tile)
+                stack.extend(neighbors)
 
     def highlight(self):
         """Highlight the neighbors in a 3x3x3 cube."""
