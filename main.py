@@ -9,10 +9,17 @@ class Game:
         self._root.config(bg="#384048")
         self._images = {}
         self._board = [[[None for _ in range(6)] for _ in range(6)] for _ in range(6)]
+        self.over = False
+        self.reset_window = None
+
+        # Frame for the grid layout
+        self.grid_frame = tk.Frame(self._root, bg="#384048")
+        self.grid_frame.pack(side="top", pady=10)
+
         self.load_images()
         self.create_grids()
         self.draw_tiles()
-        self.initialize_tile_states(20)
+        self.initialize_tile_states(50)
 
         self._root.update_idletasks()
         self._root.geometry(f"{self._root.winfo_reqwidth()}x{self._root.winfo_reqheight()}")
@@ -30,10 +37,10 @@ class Game:
     def create_grids(self):
         """Create 2x3 grid layout for the smaller grids with spacing."""
         for grid_row in range(2 * 7 + 1):
-            self._root.grid_rowconfigure(grid_row, weight=0, minsize=20)
+            self.grid_frame.grid_rowconfigure(grid_row, weight=0, minsize=20)
 
         for grid_col in range(3 * 7 + 1):
-            self._root.grid_columnconfigure(grid_col, weight=0, minsize=20)
+            self.grid_frame.grid_columnconfigure(grid_col, weight=0, minsize=20)
 
     def initialize_tile_states(self, mine_count):
         all_tiles = [tile for layer in self._board for row in layer for tile in row]
@@ -76,7 +83,7 @@ class Game:
                     absolute_row = grid_row * 7 + x + 1  # Offset by 1 row
                     absolute_col = grid_col * 7 + y + 1  # Offset by 1 column
                     tile = Tile(self, x, y, z)
-                    tile.create_button(self._root, absolute_row, absolute_col)
+                    tile.create_button(self.grid_frame, absolute_row, absolute_col)
                     self._board[z][x][y] = tile
 
     def run(self):
@@ -85,6 +92,41 @@ class Game:
     def get_images(self):
         """Provide image assets to the Tile class."""
         return self._images
+
+    def reset(self):
+        """Reset the game state."""
+        self.over = False
+        if self.reset_window:
+            self.reset_window.destroy()  # Close the reset window
+        for layer in self._board:
+            for row in layer:
+                for tile in row:
+                    tile._revealed = False
+                    tile._flagged = False
+                    tile._mine = False
+                    # Reset the button image and background color
+                    tile._button.config(image=self._images["field"], text="", bg="Gray")
+        self.initialize_tile_states(20)
+
+    def end_game(self):
+        """Handle the game over state."""
+        self.over = True
+
+        # Create a new window for reset
+        self.reset_window = tk.Toplevel(self._root)
+        self.reset_window.title("Game Over")
+        self.reset_window.geometry("200x100")
+        self.reset_window.resizable(False, False)
+
+        # Add a label and reset button
+        tk.Label(self.reset_window, text="Game Over!", font=("Arial", 12)).pack(pady=10)
+        tk.Button(
+            self.reset_window,
+            text="Reset",
+            command=self.reset,
+            bg="red",
+            fg="white",
+        ).pack(pady=10)
 
 
 class Tile:
@@ -111,24 +153,23 @@ class Tile:
 
     def reveal(self):
         """Handle revealing the tile."""
-        if self._flagged:
+        if self._flagged or self._game.over:
             return False
 
         images = self._game.get_images()
 
-        image_str = str(self._adjacent_mines) if self._adjacent_mines > 0 else "mine" if self._mine else "base"
+        if self._mine:
+            self._button.config(image=images["mine"])
+            self._game.end_game()  # Trigger game over
+        else:
+            image_str = str(self._adjacent_mines) if self._adjacent_mines > 0 else "base"
+            self._button.config(image=images[image_str])
 
         self._revealed = True
-        self._button.config(
-            image=images[image_str],
-            font=("Helvetica", 10, "bold"),
-            fg="blue" if self._adjacent_mines > 0 else "red",
-        )
-
         return True
 
     def toggle_flag(self):
-        if self._revealed:
+        if self._revealed or self._game.over:
             return False
 
         self._flagged = not self._flagged
@@ -141,6 +182,8 @@ class Tile:
 
     def highlight(self):
         """Highlight the neighbors in a 3x3x3 cube."""
+        if self._game.over:
+            return
         neighbors = self._game.get_neighbors(self, range_size=1)
         for tile in neighbors:
             tile._button.config(bg="yellow")
@@ -148,6 +191,8 @@ class Tile:
 
     def reset_highlights(self):
         """Reset the neighbors' background color."""
+        if self._game.over:
+            return
         neighbors = self._game.get_neighbors(self, range_size=1)
         for tile in neighbors:
             tile._button.config(bg="Gray")
