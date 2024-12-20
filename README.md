@@ -11,7 +11,7 @@ The game is played on a 3D grid. The player can click on a cell to reveal it. If
 #### Mouse
 - Left click: Reveal cell
 - Right click: Flag cell
-- Middle click: Reveal all adjacent cells (WIP!)
+- Middle click: Reveal all adjacent cells
 
 #### Keyboard
 - `R`: Restart game (WIP!)

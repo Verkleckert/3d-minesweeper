@@ -177,9 +177,20 @@ class Tile:
         self._button = tk.Button(parent, image=images["field"], bg="Gray", relief="flat", padx=0, pady=-5)
         self._button.grid(row=x, column=y, padx=0, pady=0)
         self._button.bind("<Button-1>", lambda event: self.reveal())
+        self._button.bind("<Button-2>", lambda event: self.reveal_highlighted())
         self._button.bind("<Button-3>", lambda event: self.toggle_flag())
         self._button.bind("<Enter>", lambda event: self.highlight())
         self._button.bind("<Leave>", lambda event: self.reset_highlights())
+
+    def reveal_highlighted(self):
+        """Reveal all highlighted tiles."""
+        if self._game.over:
+            return
+        neighbors = self._game.get_neighbors(self, range_size=1)
+        for tile in neighbors:
+            if not tile._revealed:
+                tile.reveal()  # Reveal each highlighted tile
+        self.reveal()  # Reveal the clicked tile itself
 
     def highlight(self):
         """Highlight the neighbors in a 3x3x3 cube."""
@@ -206,7 +217,7 @@ class Tile:
 
     def reveal(self):
         """Handle revealing the tile."""
-        if self._flagged or self._game.over:
+        if self._flagged or self._game.over or self._revealed:
             return False
 
         images = self._game.get_images()
