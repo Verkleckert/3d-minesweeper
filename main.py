@@ -11,6 +11,19 @@ class Game:
         self._board = [[[None for _ in range(6)] for _ in range(6)] for _ in range(6)]
         self.over = False
         self.reset_window = None
+        self.hovered_tile = None  # Track the currently hovered tile
+        self.color_map = {  # Map numbers to colors
+            0: "lightgray",
+            1: "blue",
+            2: "green",
+            3: "red",
+            4: "purple",
+            5: "orange",
+            6: "cyan",
+            7: "pink",
+            8: "brown",
+            9: "yellow",
+        }
 
         # Frame for the grid layout
         self.grid_frame = tk.Frame(self._root, bg="#384048")
@@ -24,6 +37,9 @@ class Game:
         self._root.update_idletasks()
         self._root.geometry(f"{self._root.winfo_reqwidth()}x{self._root.winfo_reqheight()}")
         self._root.resizable(False, False)
+
+        # Bind keypress events
+        self._root.bind_all("<KeyPress>", self.handle_keypress)
 
     def load_images(self):
         """Load and store images for efficient reuse."""
@@ -86,6 +102,19 @@ class Game:
                     tile.create_button(self.grid_frame, absolute_row, absolute_col)
                     self._board[z][x][y] = tile
 
+    def handle_keypress(self, event):
+        """Handle keypress events to mark or unmark tiles."""
+        if self.hovered_tile:
+            key = event.keysym
+            if key.isdigit():
+                number = int(key)
+                color = self.color_map.get(number, "gray")
+                self.hovered_tile._button.config(bg=color)
+                self.hovered_tile.marker_color = color  # Store the marker color
+            elif key == "BackSpace":
+                self.hovered_tile._button.config(bg="Gray")
+                self.hovered_tile.marker_color = None  # Clear the marker
+
     def run(self):
         self._root.mainloop()
 
@@ -140,6 +169,7 @@ class Tile:
         self._mine = False
         self._adjacent_mines = 0
         self._button = None
+        self.marker_color = None  # Store the marker color set by number keys
 
     def create_button(self, parent, x, y):
         """Create and manage the button for this tile."""
@@ -150,6 +180,29 @@ class Tile:
         self._button.bind("<Button-3>", lambda event: self.toggle_flag())
         self._button.bind("<Enter>", lambda event: self.highlight())
         self._button.bind("<Leave>", lambda event: self.reset_highlights())
+
+    def highlight(self):
+        """Highlight the neighbors in a 3x3x3 cube."""
+        if self._game.over:
+            return
+        neighbors = self._game.get_neighbors(self, range_size=1)
+        for tile in neighbors:
+            if tile.marker_color is None:  # Only highlight unmarked tiles
+                tile._button.config(bg="yellow")
+        if self.marker_color is None:  # Highlight hovered tile only if it's not marked
+            self._button.config(bg="red")
+        self._game.hovered_tile = self  # Track the hovered tile for marking
+
+    def reset_highlights(self):
+        """Reset the neighbors' background color."""
+        if self._game.over:
+            return
+        neighbors = self._game.get_neighbors(self, range_size=1)
+        for tile in neighbors:
+            if tile.marker_color is None:  # Only reset unmarked tiles
+                tile._button.config(bg="Gray")
+        if self.marker_color is None:  # Reset hovered tile only if it's not marked
+            self._button.config(bg="Gray")
 
     def reveal(self):
         """Handle revealing the tile."""
@@ -180,23 +233,11 @@ class Tile:
         else:
             self._button.config(image=images["field"], text="")
 
-    def highlight(self):
-        """Highlight the neighbors in a 3x3x3 cube."""
-        if self._game.over:
-            return
-        neighbors = self._game.get_neighbors(self, range_size=1)
-        for tile in neighbors:
-            tile._button.config(bg="yellow")
-        self._button.config(bg="red")
+    def set_hover(self):
+        self._game.hovered_tile = self
 
-    def reset_highlights(self):
-        """Reset the neighbors' background color."""
-        if self._game.over:
-            return
-        neighbors = self._game.get_neighbors(self, range_size=1)
-        for tile in neighbors:
-            tile._button.config(bg="Gray")
-        self._button.config(bg="Gray")
+    def clear_hover(self):
+        self._game.hovered_tile = None
 
 
 def main():
